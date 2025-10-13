@@ -1,33 +1,11 @@
 import logo from './logo.svg';
 import './App.css';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { db } from './firebase';
+import { collection, addDoc, getDocs, deleteDocs, doc } from 'firebase/firestore';
 
 function App() {
   const [products, setProducts] = useState([
-      {
-      name: "Large White Eggs, Ct. 12",
-      prices: {
-          "Target": 2.39,
-          "Trader Joe's": 3.99,
-          "Fresh Thyme": 3.99
-      }
-    },
-      {
-      name: "Green Onions",
-      prices: {
-          "Target": 0.99,
-          "Trader Joe's": 1.29,
-          "Fresh Thyme": 1.29
-      }
-    },
-      {
-      name: "Tofu",
-      prices: {
-          "Target": 2.99,
-          "Trader Joe's": 1.99,
-          "Fresh Thyme": 2.79
-      }
-    }
 ]);
 
   const [newProduct, setNewProduct] = useState({
@@ -37,27 +15,60 @@ function App() {
     freshThymePrice: ''
   });
 
-  const addProduct = (e) => {
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async() => {
+    const querySnap = await getDocs(collection (db , 'products'));
+    const productsData = querySnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    setProducts(productsData);
+  }
+
+  const addProduct = async (e) => {
     e.preventDefault();
 
-    const product = {
-      name: newProduct.name,
-      prices: {
-        "Target": parseFloat(newProduct.targetPrice),
-        "Trader Joe's": parseFloat(newProduct.traderJoesPrice),
-        "Fresh Thyme": parseFloat(newProduct.freshThymePrice)
-      }
-    }; 
+    try {
+      await addDoc(collection(db, 'products'), {
+        name: newProduct.name,
+        prices: {
+          "Target": parseFloat(newProduct.targetPrice),
+          "Trader Joe's": parseFloat(newProduct.traderJoesPrice),
+          "Fresh Thyme": parseFloat(newProduct.freshThymePrice)
+        }
+      });
 
-    setProducts([...products, product]);
+      // Clear my form
+      setNewProduct({
+        name: '',
+        targetPrice: '',
+        traderJoesPrice: '',
+        freshThymePrice: ''
+      });
 
-    setNewProduct({
-      name: '',
-      targetPrice: '',
-      traderJoesPrice: '',
-      freshThymePrice: ''
-    });
+      // Reload the products from Firebase
+      loadProducts();
+    } catch (error) {
+      console.error('Error adding product:', error);
+    }
   };
+
+  // Highlight cheapest Price for quick comparisons
+  const findCheapest = (prices) => {
+    let cheapest = { store: '', price: Infinity };
+
+    Object.entries(prices).forEach(([store, price]) => {
+      if (price > 0 && price < cheapest.price) {
+        cheapest = { store, price };
+      }
+    });
+
+    return cheapest;
+  }
+  
 
   return (
     <div>
@@ -98,16 +109,29 @@ function App() {
 
     
       
-      {products.map((product) => (
+      {products.map((product) => {
+        const cheapest = findCheapest(product.prices);
+
+        return (
         <div key = {product.name}>
           <h3>{product.name}</h3>
-          <p>Target: ${product.prices.Target}</p>
-          <p>Trader Joe's: ${product.prices["Trader Joe's"]}</p>
-          <p>Fresh Thyme: ${product.prices["Fresh Thyme"]}</p>
+          <p style= {{color: cheapest.store === 'Target' ? 'green' : 'black', 
+          fontWeight: cheapest.store === 'Target' ? 'bold' : 'normal'}}>
+            Target: ${product.prices.Target}
+          </p>
+          <p style = {{color: cheapest.store === "Trader Joe's" ? 'green' : 'black', 
+          fontWeight: cheapest.store === "Trader Joe's" ? 'bold' : 'normal'}}>
+            Trader Joe's: ${product.prices["Trader Joe's"]}
+          </p>
+          <p style = {{color: cheapest.store === 'Fresh Thyme' ? 'green' : 'black', 
+          fontWeight: cheapest.store === 'Fresh Thyme' ? 'bold' : 'normal'}}>
+          Fresh Thyme: ${product.prices["Fresh Thyme"]}
+          </p>
         </div> 
-      ))}
+      );
+    })};
     </div>
-  );
+  )
 }
 
 export default App;
