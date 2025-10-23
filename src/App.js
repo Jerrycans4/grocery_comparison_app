@@ -1,10 +1,11 @@
-import logo from './logo.svg';
 import './App.css';
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { collection, addDoc, getDocs, deleteDocs, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 
 function App() {
+
+  const [editingProduct, setEditingProduct] = useState(null);
   const [products, setProducts] = useState([
 ]);
 
@@ -28,9 +29,9 @@ function App() {
     setProducts(productsData);
   }
 
+  // adding a new product
   const addProduct = async (e) => {
     e.preventDefault();
-
     try {
       await addDoc(collection(db, 'products'), {
         name: newProduct.name,
@@ -56,6 +57,39 @@ function App() {
     }
   };
 
+  // Updating existing prices
+    const updateProduct = async (productId) => {
+      try {
+        await updateDoc(doc(db, 'products', productId), {
+          prices: {
+            "Target": parseFloat(newProduct.targetPrice),
+            "Trader Joe's": parseFloat(newProduct.traderJoesPrice),
+            "Fresh Thyme": parseFloat(newProduct.freshThymePrice)
+          }
+        });
+        setEditingProduct(null);
+        setNewProduct({
+        name: '',
+        targetPrice: '',
+        traderJoesPrice: '',
+        freshThymePrice: ''
+      });
+      loadProducts();
+    } catch (error) {
+      console.error('Error updating product:', error);
+    }
+  };
+
+  //Delete some product
+  const deleteProduct = async (productId) => {
+    try {
+      await deleteDoc(doc(db, 'products', productId));
+      loadProducts();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
+  };
+
   // Highlight cheapest Price for quick comparisons
   const findCheapest = (prices) => {
     let cheapest = { store: '', price: Infinity };
@@ -73,8 +107,15 @@ function App() {
   return (
     <div>
       <h1>My Grocery Prices:</h1>
-      <form onSubmit={addProduct}>
-        <h2>Add New Product</h2>
+      <form onSubmit={ (e) => {
+        if (editingProduct) {
+          e.preventDefault();
+          updateProduct(editingProduct);
+        } else {
+          addProduct(e);
+        }
+      }}>
+        <h2>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
 
         <input
           type="text"
@@ -104,7 +145,9 @@ function App() {
           onChange={(e) => setNewProduct({...newProduct, freshThymePrice: e.target.value})}
         />
 
-        <button type ="submit">Add Product</button>
+        <button type ="submit">
+          {editingProduct ? 'Update Product' : 'Add Product'}
+        </button>
       </form>
 
     
@@ -113,23 +156,42 @@ function App() {
         const cheapest = findCheapest(product.prices);
 
         return (
-        <div key = {product.name}>
-          <h3>{product.name}</h3>
-          <p style= {{color: cheapest.store === 'Target' ? 'green' : 'black', 
-          fontWeight: cheapest.store === 'Target' ? 'bold' : 'normal'}}>
-            Target: ${product.prices.Target}
-          </p>
-          <p style = {{color: cheapest.store === "Trader Joe's" ? 'green' : 'black', 
-          fontWeight: cheapest.store === "Trader Joe's" ? 'bold' : 'normal'}}>
+          <div key = {product.id}>
+            <h3>{product.name}</h3>
+            <button onClick = {() => {
+              setEditingProduct(product.id);
+              setNewProduct({
+                name: product.name,
+                targetPrice: product.prices.Target,
+                traderJoesPrice: product.prices["Trader Joe's"],
+                freshThymePrice: product.prices["Fresh Thyme"]
+              });
+            }}>
+              Edit
+            </button>
+
+            <button onClick = {() => deleteProduct(product.id)}>
+              Delete
+            </button>
+              
+            <p style= {{color: cheapest.store === 'Target' ? 'green' : 'black', 
+            fontWeight: cheapest.store === 'Target' ? 'bold' : 'normal'}}>
+              Target: ${product.prices.Target}
+            </p>
+
+            <p style = {{color: cheapest.store === "Trader Joe's" ? 'green' : 'black', 
+            fontWeight: cheapest.store === "Trader Joe's" ? 'bold' : 'normal'}}>
             Trader Joe's: ${product.prices["Trader Joe's"]}
-          </p>
-          <p style = {{color: cheapest.store === 'Fresh Thyme' ? 'green' : 'black', 
-          fontWeight: cheapest.store === 'Fresh Thyme' ? 'bold' : 'normal'}}>
-          Fresh Thyme: ${product.prices["Fresh Thyme"]}
-          </p>
-        </div> 
-      );
-    })};
+            </p>
+
+            <p style = {{color: cheapest.store === 'Fresh Thyme' ? 'green' : 'black', 
+            fontWeight: cheapest.store === 'Fresh Thyme' ? 'bold' : 'normal'}}>
+            Fresh Thyme: ${product.prices["Fresh Thyme"]}
+            </p>
+
+          </div> 
+        );
+      })}
     </div>
   )
 }
