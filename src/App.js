@@ -42,7 +42,7 @@ function App() {
         }
       });
 
-      // Clear my form
+      // Prepare new 
       setNewProduct({
         name: '',
         targetPrice: '',
@@ -61,6 +61,7 @@ function App() {
     const updateProduct = async (productId) => {
       try {
         await updateDoc(doc(db, 'products', productId), {
+          name: newProduct.name,
           prices: {
             "Target": parseFloat(newProduct.targetPrice),
             "Trader Joe's": parseFloat(newProduct.traderJoesPrice),
@@ -105,8 +106,11 @@ function App() {
   
 
   return (
-    <div>
-      <h1>My Grocery Prices:</h1>
+    <div className = "App">
+      <h1>My Grocery Prices</h1>
+      <p style={{textAlign: 'center', color: '#7f8c8d', marginBottom: '30px'}}>
+        Compare prices across Target, Trader Joe's, and Fresh Thyme
+      </p>
       <form onSubmit={ (e) => {
         if (editingProduct) {
           e.preventDefault();
@@ -145,7 +149,8 @@ function App() {
           onChange={(e) => setNewProduct({...newProduct, freshThymePrice: e.target.value})}
         />
 
-        <button type ="submit">
+        <button type ="submit"
+        className = "btn-primary">
           {editingProduct ? 'Update Product' : 'Add Product'}
         </button>
       </form>
@@ -156,9 +161,9 @@ function App() {
         const cheapest = findCheapest(product.prices);
 
         return (
-          <div key = {product.id}>
+          <div key = {product.id} className = "product-card">
             <h3>{product.name}</h3>
-            <button onClick = {() => {
+            <button className = "btn-edit" onClick = {() => {
               setEditingProduct(product.id);
               setNewProduct({
                 name: product.name,
@@ -170,22 +175,19 @@ function App() {
               Edit
             </button>
 
-            <button onClick = {() => deleteProduct(product.id)}>
+            <button className = "btn-delete" onClick = {() => deleteProduct(product.id)}>
               Delete
             </button>
               
-            <p style= {{color: cheapest.store === 'Target' ? 'green' : 'black', 
-            fontWeight: cheapest.store === 'Target' ? 'bold' : 'normal'}}>
+            <p className={cheapest.store === 'Target' ? 'cheapest-price' : ''}>
               Target: ${product.prices.Target}
             </p>
 
-            <p style = {{color: cheapest.store === "Trader Joe's" ? 'green' : 'black', 
-            fontWeight: cheapest.store === "Trader Joe's" ? 'bold' : 'normal'}}>
+            <p className = {cheapest.store === "Trader Joe's" ? 'cheapest-price' : ''}>
             Trader Joe's: ${product.prices["Trader Joe's"]}
             </p>
 
-            <p style = {{color: cheapest.store === 'Fresh Thyme' ? 'green' : 'black', 
-            fontWeight: cheapest.store === 'Fresh Thyme' ? 'bold' : 'normal'}}>
+            <p className = {cheapest.store === 'Fresh Thyme' ? 'bold' : ''}>
             Fresh Thyme: ${product.prices["Fresh Thyme"]}
             </p>
 
